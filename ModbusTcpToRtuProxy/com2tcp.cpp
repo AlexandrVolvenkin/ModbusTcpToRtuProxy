@@ -520,6 +520,7 @@ static void ModbusInOut(
     };
 
     uint8_t ucModbusFsmFlowControl;
+    uint8_t ucModbusRxBuff[MODBUS_TCP_MAX_ADU_LENGTH];
     uint8_t ucModbusSockToCommBuff[MODBUS_TCP_MAX_ADU_LENGTH];
     uint8_t ucModbusCommToSockBuff[MODBUS_TCP_MAX_ADU_LENGTH];
     uint8_t ucMessageLength;
@@ -528,7 +529,7 @@ static void ModbusInOut(
     uint16_t usTransactionID;
     uint16_t usMBAPLength;
     uint16_t usCrc;
-    const uint32_t MODBUS_35_TIMEOUT = ((((1000000UL / (comParams.BaudRate())) * 8UL * 4UL) / 1000UL) + 1) * 4;
+    const uint32_t MODBUS_35_TIMEOUT = (((((1000000UL / (comParams.BaudRate())) * 8UL * 4UL) / 1000UL) * 4) + 1);
     const uint32_t MODBUS_RECEIVE_TIMEOUT = _RECEIVE_TIMEOUT;
 
     ucModbusFsmFlowControl = MODBUS_START_CONVERSION;
@@ -543,13 +544,13 @@ static void ModbusInOut(
             ulBytesReceived = 0;
             usTransactionID = 0;
 
-            ResetEvent(hEvents[EVENT_READ]);
-            ResetEvent(hEvents[EVENT_SENT]);
-            ResetEvent(hEvents[EVENT_RECEIVED]);
-            ResetEvent(hEvents[EVENT_WRITTEN]);
-            ResetEvent(hEvents[EVENT_STAT]);
-            ResetEvent(hEvents[EVENT_CLOSE]);
-            ResetEvent(hEvents[EVENT_ACCEPT]);
+//            ResetEvent(hEvents[EVENT_READ]);
+//            ResetEvent(hEvents[EVENT_SENT]);
+//            ResetEvent(hEvents[EVENT_RECEIVED]);
+//            ResetEvent(hEvents[EVENT_WRITTEN]);
+//            ResetEvent(hEvents[EVENT_STAT]);
+//            ResetEvent(hEvents[EVENT_CLOSE]);
+//            ResetEvent(hEvents[EVENT_ACCEPT]);
 
             ulEventsTimeOut = MODBUS_RECEIVE_TIMEOUT;
             ucModbusFsmFlowControl = MODBUS_TCP_TO_BUFF;
@@ -557,9 +558,10 @@ static void ModbusInOut(
 
 //-----------------------------------------------------------------------------------------------------
         case MODBUS_RTU_TO_BUFF:
+            cout << "MODBUS_RTU_TO_BUFF" << endl;
             if (!ReadFile((HANDLE)hRtuSock,
-                          (&ucModbusCommToSockBuff[_MODBUS_TCP_RTU_HEADER_LENGTH_DIFFERENCE + ucMessageLength]),
-                          (sizeof(ucModbusCommToSockBuff) - ucMessageLength),
+                          ucModbusRxBuff,
+                          (sizeof(ucModbusRxBuff)),
                           &not_used,
                           &overlaps[EVENT_READ]))
             {
@@ -592,8 +594,29 @@ static void ModbusInOut(
                     stop = TRUE;
                     break;
                 }
+                cout << "ulBytesReceived" << endl;
+                cout << "0x" << hex << uppercase << setw(2) << setfill('0') << (unsigned int)(ulBytesReceived) << " " << endl;
+
+                cout << "ucMessageLength" << endl;
+                cout << "0x" << hex << uppercase << setw(2) << setfill('0') << (unsigned int)(ucMessageLength) << " " << endl;
+                cout << "ucModbusRxBuff" << endl;
+                unsigned char *pucSourceTemp;
+                pucSourceTemp = (unsigned char*)(ucModbusRxBuff);
+                for(int i=0; i<32; )
+                {
+                    for(int j=0; j<8; j++)
+                    {
+                        cout << hex << uppercase << setw(2) << setfill('0') << (unsigned int)pucSourceTemp[i + j] << " ";
+                    }
+                    cout << endl;
+                    i += 8;
+                }
 
                 ResetEvent(hEvents[EVENT_READ]);
+
+                memcpy((&ucModbusCommToSockBuff[_MODBUS_TCP_RTU_HEADER_LENGTH_DIFFERENCE + ucMessageLength]),
+                       ucModbusRxBuff,
+                       ulBytesReceived);
 
                 ucMessageLength += ulBytesReceived;
 
@@ -697,6 +720,7 @@ static void ModbusInOut(
                 break;
             }
             case WAIT_TIMEOUT:
+                cout << "WAIT_TIMEOUT" << endl;
                 if (ucMessageLength < _MIN_MESSAGE_LENGTH)
                 {
                     ucModbusFsmFlowControl = MODBUS_START_CONVERSION;
@@ -707,6 +731,12 @@ static void ModbusInOut(
                     ulEventsTimeOut = _RESPONSE_TIMEOUT;
                     ucModbusFsmFlowControl = MODBUS_BUFF_TO_TCP;
                 }
+
+//                cout << "WAIT_TIMEOUT" << endl;
+//                ulBytesReceived = 0;
+//                ulEventsTimeOut = _RESPONSE_TIMEOUT;
+//                ucModbusFsmFlowControl = MODBUS_BUFF_TO_TCP;
+
                 break;
             default:
                 TraceLastError("ModbusInOut(): WaitForMultipleObjects()");
@@ -717,9 +747,10 @@ static void ModbusInOut(
 
 //-----------------------------------------------------------------------------------------------------
         case MODBUS_BUFF_TO_TCP:
+            cout << "MODBUS_BUFF_TO_TCP" << endl;
             if (!ReadFile((HANDLE)hTcpSock,
-                          (ucModbusSockToCommBuff),
-                          (sizeof(ucModbusSockToCommBuff)),
+                          ucModbusRxBuff,
+                          (sizeof(ucModbusRxBuff)),
                           &not_used,
                           &overlaps[EVENT_RECEIVED]))
             {
@@ -745,6 +776,19 @@ static void ModbusInOut(
 
             ucMessageLength = ucMessageLength +
                               _MODBUS_TCP_RTU_HEADER_LENGTH_DIFFERENCE;
+
+            cout << "ucModbusCommToSockBuff" << endl;
+//        unsigned char *pucSourceTemp;
+            pucSourceTemp = (unsigned char*)ucModbusCommToSockBuff;
+            for(int i=0; i<32; )
+            {
+                for(int j=0; j<8; j++)
+                {
+                    cout << hex << uppercase << setw(2) << setfill('0') << (unsigned int)pucSourceTemp[i + j] << " ";
+                }
+                cout << endl;
+                i += 8;
+            }
 
             if (!WriteFile((HANDLE)hTcpSock,
                            (ucModbusCommToSockBuff),
@@ -886,9 +930,10 @@ static void ModbusInOut(
 
 //-----------------------------------------------------------------------------------------------------
         case MODBUS_TCP_TO_BUFF:
+            cout << "MODBUS_TCP_TO_BUFF" << endl;
             if (!ReadFile((HANDLE)hTcpSock,
-                          (ucModbusSockToCommBuff + ucMessageLength),
-                          (sizeof(ucModbusSockToCommBuff) - ucMessageLength),
+                          ucModbusRxBuff,
+                          (sizeof(ucModbusRxBuff)),
                           &not_used,
                           &overlaps[EVENT_RECEIVED]))
             {
@@ -962,7 +1007,29 @@ static void ModbusInOut(
                     break;
                 }
 
+                cout << "ulBytesReceived" << endl;
+                cout << "0x" << hex << uppercase << setw(2) << setfill('0') << (unsigned int)(ulBytesReceived) << " " << endl;
+
+                cout << "ucMessageLength" << endl;
+                cout << "0x" << hex << uppercase << setw(2) << setfill('0') << (unsigned int)(ucMessageLength) << " " << endl;
+                cout << "ucModbusRxBuff" << endl;
+                unsigned char *pucSourceTemp;
+                pucSourceTemp = (unsigned char*)(ucModbusRxBuff);
+                for(int i=0; i<32; )
+                {
+                    for(int j=0; j<8; j++)
+                    {
+                        cout << hex << uppercase << setw(2) << setfill('0') << (unsigned int)pucSourceTemp[i + j] << " ";
+                    }
+                    cout << endl;
+                    i += 8;
+                }
+
                 ResetEvent(hEvents[EVENT_RECEIVED]);
+
+                memcpy((ucModbusSockToCommBuff + ucMessageLength),
+                       ucModbusRxBuff,
+                       ulBytesReceived);
 
                 ucMessageLength += ulBytesReceived;
 
@@ -1029,6 +1096,7 @@ static void ModbusInOut(
                 break;
             }
             case WAIT_TIMEOUT:
+                cout << "WAIT_TIMEOUT" << endl;
                 if (ucMessageLength < _MIN_MESSAGE_LENGTH)
                 {
                     ucModbusFsmFlowControl = MODBUS_START_CONVERSION;
@@ -1039,6 +1107,10 @@ static void ModbusInOut(
                     ulEventsTimeOut = _RESPONSE_TIMEOUT;
                     ucModbusFsmFlowControl = MODBUS_BUFF_TO_RTU;
                 }
+//
+//                ulBytesReceived = 0;
+//                ulEventsTimeOut = _RESPONSE_TIMEOUT;
+//                ucModbusFsmFlowControl = MODBUS_BUFF_TO_RTU;
                 break;
             default:
                 TraceLastError("ModbusInOut(): WaitForMultipleObjects()");
@@ -1049,9 +1121,10 @@ static void ModbusInOut(
 
 //-----------------------------------------------------------------------------------------------------
         case MODBUS_BUFF_TO_RTU:
+            cout << "MODBUS_BUFF_TO_RTU" << endl;
             if (!ReadFile((HANDLE)hRtuSock,
-                          (&ucModbusCommToSockBuff[_MODBUS_TCP_RTU_HEADER_LENGTH_DIFFERENCE + ucMessageLength]),
-                          (sizeof(ucModbusCommToSockBuff) - ucMessageLength),
+                          ucModbusRxBuff,
+                          (sizeof(ucModbusRxBuff)),
                           &not_used,
                           &overlaps[EVENT_READ]))
             {
@@ -1077,6 +1150,18 @@ static void ModbusInOut(
                                    ucMessageLength + 1] =
                                        (uint8_t)usCrc;
 
+            cout << "ucModbusSockToCommBuff" << endl;
+//        unsigned char *pucSourceTemp;
+            pucSourceTemp = (unsigned char*)ucModbusSockToCommBuff;
+            for(int i=0; i<32; )
+            {
+                for(int j=0; j<8; j++)
+                {
+                    cout << hex << uppercase << setw(2) << setfill('0') << (unsigned int)pucSourceTemp[i + j] << " ";
+                }
+                cout << endl;
+                i += 8;
+            }
 
             if (!WriteFile((HANDLE)hRtuSock,
                            (&ucModbusSockToCommBuff[_MODBUS_TCP_RTU_HEADER_LENGTH_DIFFERENCE]),
