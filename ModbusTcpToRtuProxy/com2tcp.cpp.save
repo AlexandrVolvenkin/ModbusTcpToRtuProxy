@@ -500,8 +500,8 @@ static void ModbusInOut(
     if (!PrepareEvents(EVENT_NUM, hEvents, overlaps))
         stop = TRUE;
 
-//    WSAEventSelect(hRtuSock, hEvents[EVENT_CLOSE], FD_CLOSE);
-//    WSAEventSelect(hTcpSock, hEvents[EVENT_CLOSE], FD_CLOSE);
+    WSAEventSelect(hRtuSock, hEvents[EVENT_CLOSE], FD_CLOSE);
+    WSAEventSelect(hTcpSock, hEvents[EVENT_CLOSE], FD_CLOSE);
 
     if (hSockListen != INVALID_SOCKET)
         WSAEventSelect(hSockListen, hEvents[EVENT_ACCEPT], FD_ACCEPT);
@@ -529,7 +529,7 @@ static void ModbusInOut(
     uint16_t usTransactionID;
     uint16_t usMBAPLength;
     uint16_t usCrc;
-    const uint32_t MODBUS_35_TIMEOUT = (((((1000000UL / (comParams.BaudRate())) * 8UL * 4UL) / 1000UL) * 4) + 1);
+    const uint32_t MODBUS_35_TIMEOUT = (((((1000000UL / (comParams.BaudRate())) * 8UL * 4UL) / 1000UL) * 4) + 1);//_RECEIVE_TIMEOUT;//
     const uint32_t MODBUS_RECEIVE_TIMEOUT = _RECEIVE_TIMEOUT;
 
     ucModbusFsmFlowControl = MODBUS_START_CONVERSION;
@@ -720,13 +720,13 @@ static void ModbusInOut(
                 break;
             }
             case WAIT_TIMEOUT:
-                   cout << "WAIT_TIMEOUT" << endl;
+                cout << "WAIT_TIMEOUT" << endl;
                 if (ucMessageLength < _MIN_MESSAGE_LENGTH)
                 {
                     ucModbusFsmFlowControl = MODBUS_START_CONVERSION;
                 }
                 else
-                {                 
+                {
                     ulBytesReceived = 0;
                     ulEventsTimeOut = _RESPONSE_TIMEOUT;
                     ucModbusFsmFlowControl = MODBUS_BUFF_TO_TCP;
@@ -1096,6 +1096,7 @@ static void ModbusInOut(
                 break;
             }
             case WAIT_TIMEOUT:
+                cout << "WAIT_TIMEOUT" << endl;
                 if (ucMessageLength < _MIN_MESSAGE_LENGTH)
                 {
                     ucModbusFsmFlowControl = MODBUS_START_CONVERSION;
@@ -1161,7 +1162,6 @@ static void ModbusInOut(
                 cout << endl;
                 i += 8;
             }
-
 
             if (!WriteFile((HANDLE)hRtuSock,
                            (&ucModbusSockToCommBuff[_MODBUS_TCP_RTU_HEADER_LENGTH_DIFFERENCE]),

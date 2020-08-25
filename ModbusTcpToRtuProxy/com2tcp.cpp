@@ -529,7 +529,7 @@ static void ModbusInOut(
     uint16_t usTransactionID;
     uint16_t usMBAPLength;
     uint16_t usCrc;
-    const uint32_t MODBUS_35_TIMEOUT = (((((1000000UL / (comParams.BaudRate())) * 8UL * 4UL) / 1000UL) * 4) + 1);
+    const uint32_t MODBUS_35_TIMEOUT = (((((1000000UL / (comParams.BaudRate())) * 8UL * 4UL) / 1000UL) * 16) + 1);//_RECEIVE_TIMEOUT;//
     const uint32_t MODBUS_RECEIVE_TIMEOUT = _RECEIVE_TIMEOUT;
 
     ucModbusFsmFlowControl = MODBUS_START_CONVERSION;
