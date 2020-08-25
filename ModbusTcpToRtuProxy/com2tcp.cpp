@@ -529,7 +529,8 @@ static void ModbusInOut(
     uint16_t usTransactionID;
     uint16_t usMBAPLength;
     uint16_t usCrc;
-    const uint32_t MODBUS_35_TIMEOUT = (((((1000000UL / (comParams.BaudRate())) * 8UL * 4UL) / 1000UL) * 16) + 1);//_RECEIVE_TIMEOUT;//
+    const uint32_t MODBUS_35_TIMEOUT = (((((1000000UL / (comParams.BaudRate())) * 8UL * 4UL) / 1000UL) * 256) + 1);
+    const uint32_t MODBUS_35_TIMEOUT_TCP = (((((1000000UL / (comParams.BaudRate())) * 8UL * 4UL) / 1000UL) * 4) + 1);
     const uint32_t MODBUS_RECEIVE_TIMEOUT = _RECEIVE_TIMEOUT;
 
     ucModbusFsmFlowControl = MODBUS_START_CONVERSION;
@@ -731,11 +732,6 @@ static void ModbusInOut(
                     ulEventsTimeOut = _RESPONSE_TIMEOUT;
                     ucModbusFsmFlowControl = MODBUS_BUFF_TO_TCP;
                 }
-
-//                cout << "WAIT_TIMEOUT" << endl;
-//                ulBytesReceived = 0;
-//                ulEventsTimeOut = _RESPONSE_TIMEOUT;
-//                ucModbusFsmFlowControl = MODBUS_BUFF_TO_TCP;
 
                 break;
             default:
@@ -1042,7 +1038,7 @@ static void ModbusInOut(
                 }
                 else
                 {
-                    ulEventsTimeOut = MODBUS_35_TIMEOUT;
+                    ulEventsTimeOut = MODBUS_35_TIMEOUT_TCP;
                 }
                 break;
             case WAIT_OBJECT_0 + EVENT_WRITTEN:
@@ -1108,9 +1104,6 @@ static void ModbusInOut(
                     ucModbusFsmFlowControl = MODBUS_BUFF_TO_RTU;
                 }
 //
-//                ulBytesReceived = 0;
-//                ulEventsTimeOut = _RESPONSE_TIMEOUT;
-//                ucModbusFsmFlowControl = MODBUS_BUFF_TO_RTU;
                 break;
             default:
                 TraceLastError("ModbusInOut(): WaitForMultipleObjects()");
@@ -1257,6 +1250,7 @@ static void ModbusInOut(
                 ResetEvent(hEvents[EVENT_WRITTEN]);
                 ucMessageLength = 0;
                 ulBytesReceived = 0;
+                ulEventsTimeOut = _RESPONSE_TIMEOUT;
                 ucModbusFsmFlowControl = MODBUS_RTU_TO_BUFF;
 
                 break;

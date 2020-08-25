@@ -12,7 +12,7 @@ extern "C" {
 //-----------------------------------------------------------------------------------------------------
 #define _MIN_MESSAGE_LENGTH 4
 
-#define _RESPONSE_TIMEOUT    1000
+#define _RESPONSE_TIMEOUT    500
 #define _RECEIVE_TIMEOUT    15000
 
 #define MODBUS_RTU_MAX_ADU_LENGTH  256
