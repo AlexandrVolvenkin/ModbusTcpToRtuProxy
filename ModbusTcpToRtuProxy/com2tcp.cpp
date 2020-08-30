@@ -770,8 +770,9 @@ static void ModbusInOut(
             ucModbusCommToSockBuff[4] = usMBAPLength >> 8;
             ucModbusCommToSockBuff[5] = usMBAPLength & 0x00FF;
 
-            ucMessageLength = ucMessageLength +
-                              _MODBUS_TCP_RTU_HEADER_LENGTH_DIFFERENCE;
+            ucMessageLength = ((ucMessageLength -
+                               _MODBUS_RTU_CHECKSUM_LENGTH) +
+                              _MODBUS_TCP_RTU_HEADER_LENGTH_DIFFERENCE);
 
             cout << "ucModbusCommToSockBuff" << endl;
 //        unsigned char *pucSourceTemp;
